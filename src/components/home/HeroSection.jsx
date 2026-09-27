@@ -27,7 +27,7 @@ export function HeroSection() {
 
         <div className="text-left flex flex-col justify-center">
           <span className="text-xs text-gray-500 mb-1">– Author</span>
-          <h2 className="text-lg font-bold !text-black mb-4">Teerapat Maeewong</h2>
+          <h2 className="text-lg font-bold !text-black mb-4">Teerapat Maleewong</h2>
           <p className="text-[#666666] text-sm leading-relaxed">
             I am a full-stack developer moving from technical support into product
             engineering. After an internship on VR training apps and a bootcamp at
