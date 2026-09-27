@@ -35,7 +35,7 @@ export function AdminSidebar() {
           to="/"
           className="text-3xl font-semibold tracking-tight text-black no-underline"
         >
-          hh<span className="text-emerald-500">.</span>
+          TM<span className="text-emerald-500">.</span>
         </Link>
         <p className="mt-1 text-sm font-medium text-[#c4a484]">Admin panel</p>
       </div>
@@ -66,7 +66,7 @@ export function AdminSidebar() {
           className="mb-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 no-underline transition-colors hover:bg-gray-200/80"
         >
           <ExternalLink className="size-5 shrink-0" strokeWidth={1.75} />
-          hh. website
+          TM. website
         </a>
         <button
           type="button"
