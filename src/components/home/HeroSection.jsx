@@ -1,4 +1,4 @@
-import heroImage from "@/assets/images/hero-image.jpg.jpg"
+import heroImage from "@/assets/images/hero-image.jpg"
 
 export function HeroSection() {
   return (
@@ -20,22 +20,19 @@ export function HeroSection() {
         <div className="flex justify-center">
           <img
             src={heroImage}
-            alt="Author with a cat"
+            alt="Author portrait"
             className="w-[386px] h-[529px] rounded-2xl object-cover opacity-100 shadow-sm"
           />
         </div>
 
         <div className="text-left flex flex-col justify-center">
-          <span className="text-xs text-gray-500 mb-1">-Author</span>
-          <h2 className="text-lg font-bold !text-black mb-4">Thompson P.</h2>
-          <p className="text-[#666666] text-sm leading-relaxed mb-4">
-            I am a pet enthusiast and freelance writer who specializes in animal
-            behavior and care. With a deep love for cats, I enjoy sharing insights
-            on feline companionship and wellness.
-          </p>
+          <span className="text-xs text-gray-500 mb-1">– Author</span>
+          <h2 className="text-lg font-bold !text-black mb-4">Teerapat Maeewong</h2>
           <p className="text-[#666666] text-sm leading-relaxed">
-            When I'm not writing, I spends time volunteering at my local animal
-            shelter, helping cats find loving homes.
+            I am a full-stack developer moving from technical support into product
+            engineering. After an internship on VR training apps and a bootcamp at
+            TechUp, I now focus on building clear, useful web experiences with
+            React and Next.js.
           </p>
         </div>
       </div>

@@ -3,10 +3,9 @@ import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/context/AuthContext"
+import { ProfileAvatar } from "@/lib/profileAvatar"
 
 const BIO_MAX = 120
-const DEFAULT_AVATAR =
-  "https://api.dicebear.com/9.x/avataaars/svg?seed=Thompson"
 
 export function ProfilePage() {
   const { user, updateProfile } = useAuth()
@@ -75,10 +74,10 @@ export function ProfilePage() {
 
       <div className="w-full max-w-xl px-10 py-10">
         <div className="mb-8 flex items-center gap-6">
-          <img
-            src={form.profilePicture || DEFAULT_AVATAR}
-            alt="Profile"
-            className="size-28 rounded-full object-cover"
+          <ProfileAvatar
+            src={form.profilePicture}
+            name={form.name || form.username}
+            className="size-28 text-3xl"
           />
           <div>
             <input

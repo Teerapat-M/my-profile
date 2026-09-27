@@ -9,9 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/context/AuthContext"
-
-const DEFAULT_AVATAR =
-  "https://api.dicebear.com/9.x/avataaars/svg?seed=Thompson"
+import { ProfileAvatar } from "@/lib/profileAvatar"
 
 export function Navbar() {
   const navigate = useNavigate()
@@ -28,7 +26,7 @@ export function Navbar() {
         to="/"
         className="cursor-pointer text-3xl font-semibold tracking-tight text-gray-800 no-underline"
       >
-        hh<span className="text-emerald-500">.</span>
+        TM<span className="text-emerald-500">.</span>
       </Link>
 
       <div className="hidden items-center gap-3 md:flex">
@@ -39,10 +37,10 @@ export function Navbar() {
                 type="button"
                 className="flex items-center gap-2 rounded-full border border-gray-300 bg-white py-1.5 pr-3 pl-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
               >
-                <img
-                  src={user?.profilePicture || DEFAULT_AVATAR}
-                  alt={user?.name || "User"}
-                  className="size-8 rounded-full object-cover"
+                <ProfileAvatar
+                  src={user?.profilePicture}
+                  name={user?.name || user?.username}
+                  className="size-8 text-xs"
                 />
                 <span className="max-w-32 truncate">
                   {user?.name || user?.username}
