@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
@@ -12,9 +12,45 @@ export function CategoryFormPage() {
   const { categoryId } = useParams()
   const isEdit = Boolean(categoryId)
   const navigate = useNavigate()
-  const existing = isEdit ? getCategoryById(categoryId) : null
-  const [name, setName] = useState(existing?.name ?? "")
+  const [name, setName] = useState("")
   const [isSaving, setIsSaving] = useState(false)
+  const [isBooting, setIsBooting] = useState(isEdit)
+  const [existing, setExisting] = useState(null)
+
+  useEffect(() => {
+    if (!isEdit) return undefined
+
+    let cancelled = false
+
+    async function load() {
+      setIsBooting(true)
+      try {
+        const category = await getCategoryById(categoryId)
+        if (cancelled) return
+        setExisting(category)
+        setName(category?.name ?? "")
+      } catch (error) {
+        if (cancelled) return
+        console.error(error)
+        setExisting(null)
+      } finally {
+        if (!cancelled) setIsBooting(false)
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [categoryId, isEdit])
+
+  if (isBooting) {
+    return (
+      <div className="px-10 py-10">
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    )
+  }
 
   if (isEdit && !existing) {
     return (
@@ -27,16 +63,16 @@ export function CategoryFormPage() {
     )
   }
 
-  function handleSave() {
+  async function handleSave() {
     setIsSaving(true)
     try {
       if (isEdit) {
-        updateCategory(categoryId, { name })
+        await updateCategory(categoryId, { name })
         toast.success("Edit category", {
           description: "Category has been successfully updated.",
         })
       } else {
-        createCategory({ name })
+        await createCategory({ name })
         toast.success("Create category", {
           description: "Category has been successfully created.",
         })

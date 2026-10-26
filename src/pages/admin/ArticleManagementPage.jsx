@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { Search, Pencil, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
@@ -20,8 +20,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { deleteArticle, getArticles } from "@/services/admin/articleStore"
+import { adminPostsQuery } from "@/lib/apiContract"
 import { getCategories } from "@/services/admin/categoryStore"
+import { deletePost } from "@/services/postApiService"
+import { fetchPosts } from "@/services/postService"
 import { cn } from "@/lib/utils"
 
 export function ArticleManagementPage() {
@@ -31,12 +33,56 @@ export function ArticleManagementPage() {
   const [keyword, setKeyword] = useState("")
   const [refreshKey, setRefreshKey] = useState(0)
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const categories = useMemo(() => getCategories(), [refreshKey])
+  const [categories, setCategories] = useState([])
+  const [articles, setArticles] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const articles = useMemo(
-    () => getArticles({ keyword, status, category }),
-    [keyword, status, category, refreshKey]
-  )
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      setIsLoading(true)
+      try {
+        // ponytail: admin table loads the first 100 posts; paginate if the catalog grows.
+        const params = {
+          page: 1,
+          limit: 100,
+          ...adminPostsQuery(status),
+        }
+        if (category !== "all") params.category = category
+
+        const [{ posts }, nextCategories] = await Promise.all([
+          fetchPosts(params),
+          getCategories(),
+        ])
+        if (cancelled) return
+        setArticles(posts)
+        setCategories(nextCategories)
+      } catch (error) {
+        if (cancelled) return
+        console.error(error)
+        toast.error(
+          error.response?.data?.error ?? "Failed to load articles"
+        )
+        setArticles([])
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [refreshKey, status, category])
+
+  const visibleArticles = useMemo(() => {
+    const query = keyword.trim().toLowerCase()
+    if (!query) return articles
+    return articles.filter((article) =>
+      article.title.toLowerCase().includes(query)
+    )
+  }, [articles, keyword])
 
   function updateParam(key, value) {
     const params = new URLSearchParams(searchParams)
@@ -45,10 +91,10 @@ export function ArticleManagementPage() {
     setSearchParams(params)
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deleteTarget) return
     try {
-      deleteArticle(deleteTarget.id)
+      await deletePost(deleteTarget.id)
       toast.success("Delete article", {
         description: "The article has been deleted successfully",
       })
@@ -128,14 +174,20 @@ export function ArticleManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {articles.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={4} className="px-5 py-10 text-center text-gray-500">
+                    Loading...
+                  </td>
+                </tr>
+              ) : visibleArticles.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-5 py-10 text-center text-gray-500">
                     No articles found
                   </td>
                 </tr>
               ) : (
-                articles.map((article, index) => (
+                visibleArticles.map((article, index) => (
                   <tr
                     key={article.id}
                     className={cn(

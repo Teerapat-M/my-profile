@@ -1,30 +1,30 @@
 import axios from "axios"
 import { ENDPOINTS } from "@/config/api"
+import { authHeaders } from "@/services/http"
 
 /**
  * สร้างโพสต์ใหม่พร้อมอัปโหลดรูป (multipart/form-data)
  * ต้องส่ง FormData ที่มี title, category_id, description, content, status_id, imageFile
  */
 export async function createPostWithImage(formData) {
-  const token = localStorage.getItem("access_token")
-
   const response = await axios.post(ENDPOINTS.posts, formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: authHeaders(),
   })
 
   return response.data
 }
 
 export async function updatePost(postId, payload) {
-  const token = localStorage.getItem("access_token")
-
   const response = await axios.put(`${ENDPOINTS.posts}/${postId}`, payload, {
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: authHeaders(),
+  })
+
+  return response.data
+}
+
+export async function deletePost(postId) {
+  const response = await axios.delete(`${ENDPOINTS.posts}/${postId}`, {
+    headers: authHeaders(),
   })
 
   return response.data

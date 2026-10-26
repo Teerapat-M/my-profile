@@ -1,15 +1,31 @@
 import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import Markdown from "react-markdown"
+import { toast } from "sonner"
 import { Navbar } from "@/components/layout/Navbar"
 import { Footer } from "@/components/layout/Footer"
 import { Button } from "@/components/ui/button"
 import { LoginAlertDialog } from "@/components/posts/LoginAlertDialog"
 import { PostInteractionBar } from "@/components/posts/PostInteractionBar"
 import { CommentSection } from "@/components/posts/CommentSection"
+import { ProfileAvatar } from "@/lib/profileAvatar"
+import { getAuthorName, getAuthorPic, getLikesCount } from "@/lib/apiContract"
 import { useAuth } from "@/context/AuthContext"
-import { fetchPostById } from "@/services/postService"
+import {
+  createComment,
+  fetchComments,
+  fetchPostById,
+  likePost,
+  unlikePost,
+} from "@/services/postService"
 import { formatPostDate } from "@/utils/date"
+
+function withDateLabels(comments) {
+  return comments.map((item) => ({
+    ...item,
+    dateLabel: formatPostDate(item.createdAt),
+  }))
+}
 
 export function ViewPostPage() {
   const { postId } = useParams()
@@ -18,20 +34,28 @@ export function ViewPostPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [likes, setLikes] = useState(0)
+  const [liked, setLiked] = useState(false)
   const [comment, setComment] = useState("")
   const [comments, setComments] = useState([])
   const [showLoginAlert, setShowLoginAlert] = useState(false)
 
   const postUrl = `${window.location.origin}/post/${postId}`
+  const authorName = getAuthorName(post?.author)
+  const authorPic = getAuthorPic(post?.author)
 
   useEffect(() => {
     const getPost = async () => {
       try {
         setIsLoading(true)
         setError(null)
-        const data = await fetchPostById(postId)
+        const [data, postComments] = await Promise.all([
+          fetchPostById(postId),
+          fetchComments(postId).catch(() => []),
+        ])
         setPost(data)
-        setLikes(data.likes ?? 0)
+        setLikes(getLikesCount(data))
+        setLiked(Boolean(data.liked))
+        setComments(withDateLabels(postComments))
       } catch (err) {
         console.error(err)
         setError("Failed to load post")
@@ -52,28 +76,43 @@ export function ViewPostPage() {
     return true
   }
 
-  const handleLike = () => {
+  const handleLike = async () => {
     if (!requireLogin()) return
-    setLikes((prev) => prev + 1)
+
+    try {
+      const data = liked ? await unlikePost(postId) : await likePost(postId)
+      setLikes(getLikesCount(data))
+      setLiked(Boolean(data.liked))
+    } catch (err) {
+      console.error(err)
+      toast.error(
+        err.response?.data?.error ??
+          err.response?.data?.message ??
+          "Failed to update like"
+      )
+    }
   }
 
-  const handleSendComment = (event) => {
+  const handleSendComment = async (event) => {
     event.preventDefault()
     if (!requireLogin()) return
 
     const trimmed = comment.trim()
     if (!trimmed) return
 
-    setComments((prev) => [
-      {
-        id: Date.now(),
-        text: trimmed,
-        author: "You",
-        dateLabel: formatPostDate(new Date().toISOString()),
-      },
-      ...prev,
-    ])
-    setComment("")
+    try {
+      await createComment(postId, trimmed)
+      const postComments = await fetchComments(postId)
+      setComments(withDateLabels(postComments))
+      setComment("")
+    } catch (err) {
+      console.error(err)
+      toast.error(
+        err.response?.data?.error ??
+          err.response?.data?.message ??
+          "Failed to post comment"
+      )
+    }
   }
 
   return (
@@ -104,12 +143,12 @@ export function ViewPostPage() {
             </h1>
 
             <div className="mb-8 flex items-center text-sm text-[#757575]">
-              <img
-                className="mr-2 h-8 w-8 rounded-full"
-                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(post.author)}&size=64`}
-                alt={post.author}
+              <ProfileAvatar
+                src={authorPic}
+                name={authorName}
+                className="mr-2 size-8 text-xs"
               />
-              <span className="font-medium text-[#43403b]">{post.author}</span>
+              <span className="font-medium text-[#43403b]">{authorName}</span>
               <span className="mx-2 text-gray-300">|</span>
               <span>{formatPostDate(post.date)}</span>
             </div>

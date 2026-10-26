@@ -1,5 +1,6 @@
 import axios from "axios"
 import { ENDPOINTS } from "@/config/api"
+import { normalizeUser } from "@/lib/apiContract"
 import {
   localGetUser,
   localLogin,
@@ -39,16 +40,16 @@ export async function loginUser(payload) {
 }
 
 export async function fetchCurrentUser(accessToken) {
-  if (accessToken?.startsWith("local.")) return localGetUser(accessToken)
+  if (accessToken?.startsWith("local.")) return normalizeUser(localGetUser(accessToken))
 
   try {
     const response = await axios.get(ENDPOINTS.auth.getUser, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
-    return response.data
+    return normalizeUser(response.data)
   } catch (error) {
     if (!isRemoteUnavailable(error)) throw error
-    return localGetUser(accessToken)
+    return normalizeUser(localGetUser(accessToken))
   }
 }
 
@@ -57,14 +58,14 @@ export async function updateUserProfile(accessToken, profile) {
     const response = await axios.put(ENDPOINTS.auth.updateProfile, profile, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
-    return response.data
+    return normalizeUser(response.data)
   } catch (error) {
     if (
       accessToken?.startsWith("local.") ||
       isRemoteUnavailable(error) ||
       error.response?.status === 404
     ) {
-      return localUpdateProfile(accessToken, profile)
+      return normalizeUser(localUpdateProfile(accessToken, profile))
     }
     throw error
   }
@@ -72,9 +73,16 @@ export async function updateUserProfile(accessToken, profile) {
 
 export async function resetUserPassword(accessToken, passwords) {
   try {
-    const response = await axios.put(ENDPOINTS.auth.resetPassword, passwords, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
+    const response = await axios.put(
+      ENDPOINTS.auth.resetPassword,
+      {
+        oldPassword: passwords.oldPassword ?? passwords.currentPassword,
+        newPassword: passwords.newPassword,
+      },
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    )
     return response.data
   } catch (error) {
     if (

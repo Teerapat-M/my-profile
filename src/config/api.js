@@ -4,6 +4,7 @@ const API_BASE_URL =
 
 export const ENDPOINTS = {
   posts: `${API_BASE_URL}/posts`,
+  categories: `${API_BASE_URL}/categories`,
   auth: {
     register: `${API_BASE_URL}/auth/register`,
     login: `${API_BASE_URL}/auth/login`,

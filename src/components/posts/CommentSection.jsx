@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { ProfileAvatar } from "@/lib/profileAvatar"
 
 export function CommentSection({
   comment,
@@ -44,10 +45,10 @@ export function CommentSection({
           comments.map((item) => (
             <div key={item.id} className="rounded-xl bg-[#f9f9f9] p-4">
               <div className="mb-2 flex items-center gap-2 text-sm">
-                <img
-                  className="h-7 w-7 rounded-full"
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(item.author)}&size=64`}
-                  alt={item.author}
+                <ProfileAvatar
+                  src={item.profilePic}
+                  name={item.author}
+                  className="size-7 text-[10px]"
                 />
                 <span className="font-medium text-[#43403b]">{item.author}</span>
                 <span className="text-gray-300">|</span>

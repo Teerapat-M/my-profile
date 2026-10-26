@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Pencil, Search, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
@@ -21,16 +21,39 @@ export function CategoryManagementPage() {
   const [keyword, setKeyword] = useState("")
   const [refreshKey, setRefreshKey] = useState(0)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [categories, setCategories] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const categories = useMemo(
-    () => getCategories({ keyword }),
-    [keyword, refreshKey]
-  )
+  useEffect(() => {
+    let cancelled = false
 
-  function handleDelete() {
+    async function load() {
+      setIsLoading(true)
+      try {
+        const items = await getCategories({ keyword })
+        if (!cancelled) setCategories(items)
+      } catch (error) {
+        if (cancelled) return
+        console.error(error)
+        toast.error(
+          error.response?.data?.error ?? "Failed to load categories"
+        )
+        setCategories([])
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [keyword, refreshKey])
+
+  async function handleDelete() {
     if (!deleteTarget) return
     try {
-      deleteCategory(deleteTarget.id)
+      await deleteCategory(deleteTarget.id)
       toast.success("Delete category", {
         description: "Category has been successfully deleted.",
       })
@@ -75,7 +98,13 @@ export function CategoryManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {categories.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={2} className="px-5 py-10 text-center text-gray-500">
+                    Loading...
+                  </td>
+                </tr>
+              ) : categories.length === 0 ? (
                 <tr>
                   <td colSpan={2} className="px-5 py-10 text-center text-gray-500">
                     No categories found

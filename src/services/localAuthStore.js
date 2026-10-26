@@ -25,11 +25,11 @@ function getUserIdFromToken(accessToken) {
 function toPublicUser(user) {
   return {
     id: user.id,
-    name: user.name,
-    username: user.username,
     email: user.email,
-    bio: user.bio ?? "",
-    profilePicture: user.profilePicture ?? "",
+    username: user.username,
+    name: user.name,
+    role: user.role ?? "user",
+    profilePic: user.profilePic ?? "",
   }
 }
 
@@ -56,8 +56,8 @@ export function localRegister({ name, username, email, password }) {
     username: username.trim(),
     email: normalizedEmail,
     password,
-    bio: "",
-    profilePicture: "",
+    role: "user",
+    profilePic: "",
   }
 
   writeUsers([...users, user])
@@ -80,7 +80,11 @@ export function localLogin({ email, password }) {
     throw error
   }
 
-  return { access_token: createToken(user.id) }
+  return {
+    message: "User has been signed in successfully",
+    access_token: createToken(user.id),
+    user: toPublicUser(user),
+  }
 }
 
 export function localGetUser(accessToken) {
@@ -96,6 +100,17 @@ export function localGetUser(accessToken) {
   return toPublicUser(user)
 }
 
+function readProfileFields(profile) {
+  if (typeof FormData !== "undefined" && profile instanceof FormData) {
+    return {
+      name: profile.get("name"),
+      username: profile.get("username"),
+      imageFile: profile.get("imageFile"),
+    }
+  }
+  return profile
+}
+
 export function localUpdateProfile(accessToken, profile) {
   const userId = getUserIdFromToken(accessToken)
   const users = readUsers()
@@ -107,8 +122,10 @@ export function localUpdateProfile(accessToken, profile) {
     throw error
   }
 
-  const normalizedEmail = profile.email.trim().toLowerCase()
-  const normalizedUsername = profile.username.trim().toLowerCase()
+  const fields = readProfileFields(profile)
+  const name = String(fields.name ?? users[index].name).trim()
+  const username = String(fields.username ?? users[index].username).trim()
+  const normalizedUsername = username.toLowerCase()
 
   if (
     users.some(
@@ -121,23 +138,18 @@ export function localUpdateProfile(accessToken, profile) {
     throw error
   }
 
-  if (
-    users.some(
-      (user, i) => i !== index && user.email.toLowerCase() === normalizedEmail
-    )
-  ) {
-    const error = new Error("User with this email already exists")
-    error.response = { data: { error: "User with this email already exists" } }
-    throw error
+  let profilePic = users[index].profilePic ?? ""
+  if (fields.imageFile instanceof File) {
+    profilePic = URL.createObjectURL(fields.imageFile)
+  } else if (typeof fields.profilePic === "string" && fields.profilePic) {
+    profilePic = fields.profilePic
   }
 
   users[index] = {
     ...users[index],
-    name: profile.name.trim(),
-    username: profile.username.trim(),
-    email: normalizedEmail,
-    bio: (profile.bio ?? "").slice(0, 120),
-    profilePicture: profile.profilePicture ?? users[index].profilePicture ?? "",
+    name,
+    username,
+    profilePic,
   }
 
   writeUsers(users)

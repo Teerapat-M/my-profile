@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { ImageIcon, Trash2, X } from "lucide-react"
 import { toast } from "sonner"
@@ -21,22 +21,27 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { getAuthorName, resolveCategoryId } from "@/lib/apiContract"
 import { useAuth } from "@/context/AuthContext"
-import {
-  createArticle,
-  deleteArticle,
-  getArticleById,
-  updateArticle,
-} from "@/services/admin/articleStore"
 import { getCategories } from "@/services/admin/categoryStore"
 import {
   createPostWithImage,
+  deletePost,
   updatePost,
   POST_STATUS,
   validateImageFile,
 } from "@/services/postApiService"
+import { fetchPostById } from "@/services/postService"
 
 const INTRO_MAX = 120
+
+const emptyPost = {
+  title: "",
+  description: "",
+  content: "",
+  category_id: null,
+  status_id: null,
+}
 
 export function ArticleFormPage() {
   const { articleId } = useParams()
@@ -44,25 +49,72 @@ export function ArticleFormPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const fileInputRef = useRef(null)
-  const categories = useMemo(() => getCategories(), [])
-  const existing = isEdit ? getArticleById(articleId) : null
-
-  const [post, setPost] = useState({
-    title: existing?.title ?? "",
-    description: existing?.introduction ?? "",
-    content: existing?.content ?? "",
-    category_id: null,
-    status_id: null,
-  })
+  const [categories, setCategories] = useState([])
+  const [existing, setExisting] = useState(null)
+  const [post, setPost] = useState(emptyPost)
   const [imageFile, setImageFile] = useState(null)
-  const [imagePreview, setImagePreview] = useState(existing?.image ?? "")
+  const [imagePreview, setImagePreview] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isBooting, setIsBooting] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [showDelete, setShowDelete] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      setIsBooting(true)
+      setLoadError(null)
+      try {
+        const nextCategories = await getCategories()
+        if (cancelled) return
+        setCategories(nextCategories)
+
+        if (!isEdit) {
+          setPost(emptyPost)
+          setImagePreview("")
+          return
+        }
+
+        const existingPost = await fetchPostById(articleId)
+        if (cancelled) return
+        setExisting(existingPost)
+        setPost({
+          title: existingPost.title ?? "",
+          description: existingPost.description ?? "",
+          content: existingPost.content ?? "",
+          category_id: resolveCategoryId(nextCategories, existingPost),
+          status_id: POST_STATUS[existingPost.status] ?? null,
+        })
+        setImagePreview(existingPost.image ?? "")
+      } catch (error) {
+        if (cancelled) return
+        console.error(error)
+        setExisting(null)
+        setLoadError(error.response?.data?.error ?? "Failed to load article")
+      } finally {
+        if (!cancelled) setIsBooting(false)
+      }
+    }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [articleId, isEdit])
+
+  if (isBooting) {
+    return (
+      <div className="px-10 py-10">
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    )
+  }
 
   if (isEdit && !existing) {
     return (
       <div className="px-10 py-10">
-        <p className="text-gray-600">Article not found.</p>
+        <p className="text-gray-600">{loadError || "Article not found."}</p>
         <Link to="/admin/articles" className="text-sm text-black underline">
           Back to articles
         </Link>
@@ -128,34 +180,17 @@ export function ArticleFormPage() {
 
     try {
       if (isEdit) {
-        const categoryName =
-          categories.find((item, index) => index + 1 === post.category_id)
-            ?.name || existing.category
-
         const imageUrl = imagePreview?.startsWith("http")
           ? imagePreview
           : existing.image
 
-        if (/^\d+$/.test(String(articleId))) {
-          await updatePost(articleId, {
-            title: post.title,
-            image: imageUrl,
-            category_id: post.category_id,
-            description: post.description,
-            content: post.content,
-            status_id: statusId,
-          })
-        }
-
-        updateArticle(articleId, {
+        await updatePost(articleId, {
           title: post.title,
-          category: categoryName,
-          introduction: post.description,
+          image: imageUrl,
+          category_id: post.category_id,
+          description: post.description,
           content: post.content,
-          image: imagePreview,
-          status,
-          author: user?.name || user?.username || "Thompson P.",
-          authorId: user?.id ?? null,
+          status_id: statusId,
         })
 
         toast.success("Article updated", {
@@ -173,22 +208,7 @@ export function ArticleFormPage() {
         formData.append("status_id", statusId)
         formData.append("imageFile", imageFile.file)
 
-        const created = await createPostWithImage(formData)
-
-        // เก็บในรายการ admin ท้องถิ่นด้วย เพื่อให้เห็นใน Article management ทันที
-        createArticle({
-          id: created.id,
-          title: post.title,
-          category:
-            categories.find((item, index) => index + 1 === post.category_id)
-              ?.name || "General",
-          introduction: post.description,
-          content: post.content,
-          image: imagePreview,
-          status,
-          author: user?.name || user?.username || "Thompson P.",
-          authorId: user?.id ?? null,
-        })
+        await createPostWithImage(formData)
 
         if (status === "draft") {
           toast.success("Create article and saved as draft", {
@@ -214,9 +234,9 @@ export function ArticleFormPage() {
     }
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     try {
-      deleteArticle(articleId)
+      await deletePost(articleId)
       toast.success("Delete article", {
         description: "The article has been deleted successfully",
       })
@@ -225,6 +245,9 @@ export function ArticleFormPage() {
       toast.error(error.response?.data?.error ?? "Failed to delete article")
     }
   }
+
+  const authorName =
+    getAuthorName(user) || user?.name || user?.username || "Thompson P."
 
   return (
     <div className="flex min-h-svh flex-col">
@@ -296,8 +319,8 @@ export function ArticleFormPage() {
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
-              {categories.map((item, index) => (
-                <SelectItem key={item.id} value={String(index + 1)}>
+              {categories.map((item) => (
+                <SelectItem key={item.id} value={String(item.id)}>
                   {item.name}
                 </SelectItem>
               ))}
@@ -308,7 +331,7 @@ export function ArticleFormPage() {
         <div className="mb-5 flex flex-col gap-2">
           <label className="text-sm font-medium text-gray-700">Author name</label>
           <Input
-            value={user?.name || user?.username || "Thompson P."}
+            value={authorName}
             readOnly
             className="h-12 rounded-xl border-gray-300 bg-[#f3f3f3] px-4 text-gray-500"
           />
