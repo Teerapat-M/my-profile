@@ -38,7 +38,7 @@ export function Navbar() {
                 className="flex items-center gap-2 rounded-full border border-gray-300 bg-white py-1.5 pr-3 pl-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
               >
                 <ProfileAvatar
-                  src={user?.profilePicture}
+                  src={user?.profilePic}
                   name={user?.name || user?.username}
                   className="size-8 text-xs"
                 />

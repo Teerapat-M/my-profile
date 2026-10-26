@@ -1,7 +1,12 @@
 import { Link } from "react-router-dom"
+import { getAuthorName, getAuthorPic } from "@/lib/apiContract"
+import { ProfileAvatar } from "@/lib/profileAvatar"
 import { formatPostDate } from "@/utils/date"
 
 function BlogCard({ id, image, category, title, description, author, date }) {
+  const authorName = getAuthorName(author)
+  const authorPic = getAuthorPic(author)
+
   return (
     <div className="flex flex-col gap-4">
       <Link to={`/post/${id}`} className="relative h-[212px] sm:h-[360px]">
@@ -26,12 +31,12 @@ function BlogCard({ id, image, category, title, description, author, date }) {
           {description}
         </p>
         <div className="flex items-center text-sm">
-          <img
-            className="mr-2 h-8 w-8 rounded-full"
-            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&size=64`}
-            alt={author}
+          <ProfileAvatar
+            src={authorPic}
+            name={authorName}
+            className="mr-2 size-8 text-xs"
           />
-          <span>{author}</span>
+          <span>{authorName}</span>
           <span className="mx-2 text-gray-300">|</span>
           <span>{formatPostDate(date)}</span>
         </div>

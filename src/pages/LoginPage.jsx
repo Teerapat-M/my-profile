@@ -4,6 +4,7 @@ import { toast } from "sonner"
 import { Navbar } from "@/components/layout/Navbar"
 import { Footer } from "@/components/layout/Footer"
 import { Input } from "@/components/ui/input"
+import { getLoginAccessToken } from "@/lib/apiContract"
 import { loginUser } from "@/services/authService"
 import { useAuth } from "@/context/AuthContext"
 
@@ -33,9 +34,13 @@ export function LoginPage() {
 
     try {
       const data = await loginUser(form)
-      await login(data.access_token)
+      const accessToken = getLoginAccessToken(data)
+      if (!accessToken) {
+        throw new Error("Login did not return access_token")
+      }
+      await login(accessToken)
       navigate("/")
-    } catch (error) {
+    } catch {
       setHasError(true)
       toast.error("Your password is incorrect or this email doesn't exist", {
         description: "Please try another password or email",

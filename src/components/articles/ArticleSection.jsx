@@ -10,18 +10,30 @@ import { Button } from "@/components/ui/button"
 import { BlogCardList } from "@/components/articles/BlogCard"
 import { ArticleSearch } from "@/components/articles/ArticleSearch"
 import { ARTICLE_CATEGORIES } from "@/constants/categories"
+import { getCategories } from "@/services/admin/categoryStore"
 import { fetchPosts } from "@/services/postService"
 
-const categories = ARTICLE_CATEGORIES
+const HIGHLIGHT = "Highlight"
 const POSTS_PER_PAGE = 6
 
 function ArticleSection() {
-  const [selectedCategory, setSelectedCategory] = useState("Highlight")
+  const [categories, setCategories] = useState(ARTICLE_CATEGORIES)
+  const [selectedCategory, setSelectedCategory] = useState(HIGHLIGHT)
   const [posts, setPosts] = useState([])
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  useEffect(() => {
+    getCategories()
+      .then((items) => {
+        setCategories([HIGHLIGHT, ...items.map((item) => item.name)])
+      })
+      .catch(() => {
+        setCategories(ARTICLE_CATEGORIES)
+      })
+  }, [])
 
   const loadPosts = async (pageToLoad, category, append = false) => {
     try {
@@ -33,7 +45,7 @@ function ArticleSection() {
         limit: POSTS_PER_PAGE,
       }
 
-      if (category !== "Highlight") {
+      if (category !== HIGHLIGHT) {
         params.category = category
       }
 

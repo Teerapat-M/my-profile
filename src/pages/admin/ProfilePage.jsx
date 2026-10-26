@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/context/AuthContext"
 import { ProfileAvatar } from "@/lib/profileAvatar"
+import { validateImageFile } from "@/services/postApiService"
 
 const BIO_MAX = 120
 
@@ -11,12 +12,13 @@ export function ProfilePage() {
   const { user, updateProfile } = useAuth()
   const fileInputRef = useRef(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [imageFile, setImageFile] = useState(null)
   const [form, setForm] = useState({
     name: user?.name ?? "",
     username: user?.username ?? "",
     email: user?.email ?? "",
     bio: user?.bio ?? "",
-    profilePicture: user?.profilePicture ?? "",
+    profilePic: user?.profilePic ?? "",
   })
 
   function handleChange(event) {
@@ -30,22 +32,38 @@ export function ProfilePage() {
   function handleFileChange(event) {
     const file = event.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      setForm((prev) => ({ ...prev, profilePicture: String(reader.result) }))
+    const errorMessage = validateImageFile(file)
+    if (errorMessage) {
+      toast.error(errorMessage)
+      event.target.value = ""
+      return
     }
-    reader.readAsDataURL(file)
+    setImageFile(file)
+    setForm((prev) => ({ ...prev, profilePic: URL.createObjectURL(file) }))
   }
 
   async function handleSave() {
-    if (!form.name.trim() || !form.username.trim() || !form.email.trim()) {
+    if (!form.name.trim() || !form.username.trim()) {
       toast.error("Please fill in all required fields")
       return
     }
 
     setIsSaving(true)
     try {
-      await updateProfile(form)
+      const formData = new FormData()
+      formData.append("name", form.name.trim())
+      formData.append("username", form.username.trim())
+      if (imageFile) formData.append("imageFile", imageFile)
+
+      const updated = await updateProfile(formData)
+      setForm((prev) => ({
+        ...prev,
+        name: updated.name,
+        username: updated.username,
+        email: updated.email,
+        profilePic: updated.profilePic || prev.profilePic,
+      }))
+      setImageFile(null)
       toast.success("Saved profile", {
         description: "Your profile has been successfully updated",
       })
@@ -75,7 +93,7 @@ export function ProfilePage() {
       <div className="w-full max-w-xl px-10 py-10">
         <div className="mb-8 flex items-center gap-6">
           <ProfileAvatar
-            src={form.profilePicture}
+            src={form.profilePic}
             name={form.name || form.username}
             className="size-28 text-3xl"
           />
@@ -83,7 +101,7 @@ export function ProfilePage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/gif,image/webp"
               className="hidden"
               onChange={handleFileChange}
             />
@@ -144,8 +162,8 @@ export function ProfilePage() {
               name="email"
               type="email"
               value={form.email}
-              onChange={handleChange}
-              className="h-12 rounded-xl border-gray-300 bg-white px-3"
+              readOnly
+              className="h-12 rounded-xl border-gray-300 bg-[#f3f3f3] px-3 text-gray-500"
             />
           </div>
 
